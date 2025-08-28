@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대한민국 실시간 일기예보</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .select-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            width: 100%;
+            justify-content: center;
+        }
+        select, button {
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+        }
+        select {
+            flex-grow: 1;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #weather-info {
+            border-top: 2px solid #ecf0f1;
+            padding-top: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        #weather-info h2 {
+            color: #34495e;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .loading {
+            text-align: center;
+            font-size: 18px;
+            color: #7f8c8d;
+        }
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            font-size: 18px;
+        }
+        .weather-item {
+            margin: 10px 0;
+            padding: 15px;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .weather-item strong {
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>대한민국 실시간 일기예보</h1>
+        <form id="weather-form">
+            <div class="select-group">
+                <select id="region-select">
+                    <option value="">시/도를 선택하세요</option>
+                </select>
+                <select id="city-select" disabled>
+                    <option value="">시/군/구를 선택하세요</option>
+                </select>
+            </div>
+            <button type="submit">날씨 확인</button>
+        </form>
+        <div id="weather-info">
+            <p>궁금한 지역을 선택하고 현재 날씨를 확인하세요! ☀️</p>
+        </div>
+    </div>
+
+    <script>
+        const serviceKey = 'OaRLlfpKOXJH%2BFeghkAojoaSAQbb1bkFF9COvGfjixpiLkEYTHFLqIcBYqFb0HCrcX8H3A47X9QNiRpgcCXAOA%3D%3D'; 
+        
+        const form = document.getElementById('weather-form');
+        const regionSelect = document.getElementById('region-select');
+        const citySelect = document.getElementById('city-select');
+        const weatherInfo = document.getElementById('weather-info');
+
+        const gridData = {
+            '특별시': {
+                '서울특별시': { nx: 60, ny: 127 }
+            },
+            '광역시': {
+                '부산광역시': { nx: 98, ny: 76 },
+                '대구광역시': { nx: 89, ny: 90 },
+                '인천광역시': { nx: 55, ny: 124 },
+                '광주광역시': { nx: 58, ny: 74 },
+                '대전광역시': { nx: 67, ny: 100 },
+                '울산광역시': { nx: 102, ny: 84 }
+            },
+            '특별자치시': {
+                '세종특별자치시': { nx: 66, ny: 103 }
+            },
+            '경기도': {
+                '수원시': { nx: 60, ny: 121 }, '고양시': { nx: 57, ny: 127 },
+                '용인시': { nx: 63, ny: 120 }, '성남시': { nx: 62, ny: 123 },
+                '부천시': { nx: 56, ny: 124 }, '안산시': { nx: 58, ny: 121 },
+                '화성시': { nx: 59, ny: 119 }, '남양주시': { nx: 63, ny: 128 },
+                '평택시': { nx: 60, ny: 113 }, '안양시': { nx: 59, ny: 122 },
+                '시흥시': { nx: 58, ny: 121 }, '김포시': { nx: 53, ny: 124 },
+                '의정부시': { nx: 61, ny: 128 }, '하남시': { nx: 63, ny: 126 },
+                '광주시': { nx: 63, ny: 123 }, '광명시': { nx: 58, ny: 125 },
+                '파주시': { nx: 54, ny: 128 }, '구리시': { nx: 61, ny: 127 },
+                '오산시': { nx: 60, ny: 118 }, '군포시': { nx: 59, ny: 122 },
+                '이천시': { nx: 79, ny: 104 }, '양주시': { nx: 61, ny: 129 },
+                '안성시': { nx: 65, ny: 114 }, '동두천시': { nx: 61, ny: 132 },
+                '과천시': { nx: 61, ny: 124 }, '의왕시': { nx: 60, ny: 122 },
+                '포천시': { nx: 65, ny: 130 }, '여주시': { nx: 80, ny: 113 }
+            },
+            '강원특별자치도': {
+                '춘천시': { nx: 73, ny: 133 }, '원주시': { nx: 77, ny: 126 },
+                '강릉시': { nx: 92, ny: 131 }, '동해시': { nx: 98, ny: 122 },
+                '태백시': { nx: 94, ny: 122 }, '속초시': { nx: 81, ny: 137 },
+                '삼척시': { nx: 98, ny: 120 }
+            },
+            '충청북도': {
+                '청주시': { nx: 69, ny: 107 }, '충주시': { nx: 79, ny: 107 },
+                '제천시': { nx: 89, ny: 117 }
+            },
+            '충청남도': {
+                '천안시': { nx: 67, ny: 104 }, '공주시': { nx: 66, ny: 98 },
+                '보령시': { nx: 60, ny: 98 }, '아산시': { nx: 65, ny: 104 },
+                '서산시': { nx: 59, ny: 104 }, '논산시': { nx: 64, ny: 88 },
+                '계룡시': { nx: 66, ny: 100 }, '당진시': { nx: 61, ny: 106 }
+            },
+            '전북특별자치도': {
+                '전주시': { nx: 63, ny: 89 }, '군산시': { nx: 52, ny: 83 },
+                '익산시': { nx: 60, ny: 82 }, '정읍시': { nx: 54, ny: 79 },
+                '남원시': { nx: 74, ny: 78 }, '김제시': { nx: 57, ny: 84 }
+            },
+            '전라남도': {
+                '목포시': { nx: 50, ny: 66 }, '여수시': { nx: 74, ny: 64 },
+                '순천시': { nx: 72, ny: 66 }, '나주시': { nx: 58, ny: 78 },
+                '광양시': { nx: 73, ny: 68 }
+            },
+            '경상북도': {
+                '포항시': { nx: 106, ny: 94 }, '경주시': { nx: 101, ny: 85 },
+                '김천시': { nx: 73, ny: 97 }, '안동시': { nx: 91, ny: 106 },
+                '구미시': { nx: 86, ny: 98 }, '영주시': { nx: 90, ny: 118 },
+                '영천시': { nx: 96, ny: 88 }, '상주시': { nx: 75, ny: 102 },
+                '문경시': { nx: 82, ny: 110 }, '경산시': { nx: 91, ny: 88 }
+            },
+            '경상남도': {
+                '창원시': { nx: 90, ny: 77 }, '진주시': { nx: 74, ny: 78 },
+                '통영시': { nx: 81, ny: 70 }, '사천시': { nx: 73, ny: 76 },
+                '김해시': { nx: 90, ny: 77 }, '밀양시': { nx: 91, ny: 80 },
+                '거제시': { nx: 83, ny: 68 }, '양산시': { nx: 92, ny: 81 }
+            },
+            '제주특별자치도': {
+                '제주시': { nx: 52, ny: 38 }, '서귀포시': { nx: 53, ny: 36 }
+            }
+        };
+
+        // 시/도 드롭다운 메뉴 초기화
+        function initRegionSelect() {
+            for (const region in gridData) {
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = region;
+                regionSelect.appendChild(option);
+            }
+        }
+        initRegionSelect();
+
+        // 시/도 선택 시 시/군/구 드롭다운 메뉴 업데이트
+        regionSelect.addEventListener('change', function() {
+            const selectedRegion = regionSelect.value;
+            citySelect.innerHTML = '<option value="">시/군/구를 선택하세요</option>';
+            citySelect.disabled = true;
+
+            if (selectedRegion && gridData[selectedRegion]) {
+                const cities = gridData[selectedRegion];
+                for (const city in cities) {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    option.textContent = city;
+                    citySelect.appendChild(option);
+                }
+                citySelect.disabled = false;
+            }
+        });
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const region = regionSelect.value;
+            const city = citySelect.value;
+            
+            if (region && city) {
+                getWeather(region, city);
+            } else {
+                weatherInfo.innerHTML = `<p class="error">지역을 선택해 주세요. 🏙️</p>`;
+            }
+        });
+
+        async function getWeather(region, city) {
+            weatherInfo.innerHTML = '<p class="loading">현재 날씨 정보를 가져오는 중입니다... 📡</p>';
+
+            const grid = gridData[region][city];
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const baseDate = `${year}${month}${day}`;
+            const baseTime = getUltraSrtNcstBaseTime(now);
+
+            const url = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst?serviceKey=${serviceKey}&pageNo=1&numOfRows=100&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${grid.nx}&ny=${grid.ny}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP 오류! 상태 코드: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                if (data.response.header.resultCode === "00") {
+                    const items = data.response.body.items.item;
+                    if (items && items.length > 0) {
+                        const parsedBaseDate = items[0].baseDate;
+                        const parsedBaseTime = items[0].baseTime;
+                        displayWeather(region, city, items, parsedBaseDate, parsedBaseTime);
+                    } else {
+                        weatherInfo.innerHTML = `<p class="error">현재 날씨 정보가 없습니다. (데이터가 아직 갱신되지 않았거나, 요청 시간이 맞지 않을 수 있습니다) 😔</p>`;
+                    }
+                } else {
+                    throw new Error(data.response.header.resultMsg);
+                }
+            } catch (error) {
+                console.error('API 호출 중 오류 발생:', error);
+                weatherInfo.innerHTML = `<p class="error">날씨 정보를 가져오는 데 실패했습니다: ${error.message} 😢</p>`;
+            }
+        }
+
+        function getUltraSrtNcstBaseTime(date) {
+            let hour = date.getHours();
+            let minute = date.getMinutes();
+            if (minute < 30) {
+                hour = hour - 1;
+                if (hour < 0) {
+                    hour = 23; 
+                }
+            }
+            return String(hour).padStart(2, '0') + '00';
+        }
+
+        function displayWeather(region, city, items, baseDate, baseTime) {
+            const weatherData = {};
+            items.forEach(item => {
+                weatherData[item.category] = item.obsrValue;
+            });
+            
+            const skyStatus = getSkyStatus(weatherData['SKY']);
+            const rainType = getRainType(weatherData['PTY']);
+
+            const html = `
+                <h2>${region} ${city} 현재 날씨</h2>
+                <div class="weather-item">
+                    <p><strong>발표 시각:</strong> ${baseDate} ${baseTime.slice(0, 2)}:${baseTime.slice(2, 4)}</p>
+                    <p><strong>하늘 상태:</strong> ${skyStatus || '정보없음'}</p>
+                    <p><strong>강수 형태:</strong> ${rainType || '정보없음'}</p>
+                    <p><strong>기온:</strong> ${weatherData['T1H'] || '정보없음'}℃</p>
+                    <p><strong>습도:</strong> ${weatherData['REH'] || '정보없음'}%</p>
+                    <p><strong>풍속:</strong> ${weatherData['WSD'] || '정보없음'}m/s</p>
+                </div>
+            `;
+            weatherInfo.innerHTML = html;
+        }
+
+        function getSkyStatus(value) {
+            if (value === '1') return '맑음☀️';
+            if (value === '3') return '구름많음☁️';
+            if (value === '4') return '흐림🌫️';
+            return '';
+        }
+
+        function getRainType(value) {
+            if (value === '0') return '없음';
+            if (value === '1') return '비☔';
+            if (value === '2') return '비/눈';
+            if (value === '3') return '눈❄️';
+            if (value === '4') return '소나기🌧️';
+            if (value === '5') return '빗방울';
+            if (value === '6') return '빗방울/눈날림';
+            if (value === '7') return '눈날림';
+            return '';
+        }
+    </script>
+</body>
+</html>
